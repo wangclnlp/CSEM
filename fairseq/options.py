@@ -21,6 +21,7 @@ from fairseq.dataclass.configs import (
     InteractiveConfig,
     OptimizationConfig,
     EMAConfig,
+    RLConfig
 )
 from fairseq.dataclass.utils import gen_parser_from_dataclass
 
@@ -42,6 +43,7 @@ def get_training_parser(default_task="translation"):
     add_optimization_args(parser)
     add_checkpoint_args(parser)
     add_ema_args(parser)
+    add_rl_args(parser)
     return parser
 
 
@@ -177,6 +179,9 @@ def parse_args_and_arch(
     # Modify the parser a second time, since defaults may have been reset
     if modify_parser is not None:
         modify_parser(parser)
+
+    # TODO
+    parser.add_argument('--rl_method', type=str, default='mrt')
 
     # Parse a second time.
     if parse_known:
@@ -411,3 +416,8 @@ def get_args(
 def add_ema_args(parser):
     group = parser.add_argument_group("EMA configuration")
     gen_parser_from_dataclass(group, EMAConfig())
+
+
+def add_rl_args(parser):
+    group = parser.add_argument_group("Reinforcement Learning configuration")
+    gen_parser_from_dataclass(group, RLConfig())

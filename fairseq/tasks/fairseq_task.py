@@ -483,7 +483,9 @@ class FairseqTask(object):
         )
 
     def train_step(
-        self, sample, model, criterion, optimizer, update_num, ignore_grad=False
+        self, sample, model, criterion, optimizer, update_num, ignore_grad=False, 
+        rl_reward_function=None, sampling_task=None,
+        reward_model=None, comet_model_path=None, comet_need_reference=None
     ):
         """
         Do forward and backward, and return the loss as computed by *criterion*
@@ -509,17 +511,22 @@ class FairseqTask(object):
         model.set_num_updates(update_num)
         with torch.autograd.profiler.record_function("forward"):
             with torch.cuda.amp.autocast(enabled=(isinstance(optimizer, AMPOptimizer))):
-                loss, sample_size, logging_output = criterion(model, sample)
+                if not rl_reward_function:
+                    loss, sample_size, logging_output = criterion(model, sample)
+                else:
+                    loss, sample_size, logging_output = criterion(model, sample, 
+                                                                  rl_reward_function=rl_reward_function, sampling_task=sampling_task,
+                                                                  reward_model=reward_model, comet_model_path=comet_model_path, comet_need_reference=comet_need_reference)
         if ignore_grad:
             loss *= 0
         with torch.autograd.profiler.record_function("backward"):
-            optimizer.backward(loss)
+            optimizer.backward(loss) 
         return loss, sample_size, logging_output
 
-    def valid_step(self, sample, model, criterion):
+    def valid_step(self, sample, model, criterion,  rewards=None, **extra_kwargs):
         model.eval()
         with torch.no_grad():
-            loss, sample_size, logging_output = criterion(model, sample)
+            loss, sample_size, logging_output = criterion(model, sample, rewards, if_valid=True, **extra_kwargs)
         return loss, sample_size, logging_output
 
     def optimizer_step(self, optimizer, model, update_num):
@@ -589,6 +596,9 @@ class FairseqTask(object):
         else:
             nsentences = sum(log.get("nsentences", 0) for log in logging_outputs)
             metrics.log_scalar("bsz", nsentences, priority=190, round=1)
+
+        if 'accuracy' in logging_outputs[0].keys():
+            metrics.log_scalar("acc", logging_outputs[0]['accuracy'], priority=40, round=1)
 
         criterion.__class__.reduce_metrics(logging_outputs)
 

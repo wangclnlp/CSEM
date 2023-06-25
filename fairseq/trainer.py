@@ -55,6 +55,10 @@ class Trainer(object):
         self.cfg = cfg
         self.task = task
 
+        # load comet reward model if needed
+        if cfg['model'].rl_reward_function == 'comet_model':
+            self.comet_reward_model = self.load_comet_reward_model()
+
         # catalog shared parameters
         shared_params = _catalog_shared_params(model)
         self.tpu = cfg.common.tpu
@@ -792,6 +796,21 @@ class Trainer(object):
         extra_kwargs = {}
         if self.cfg.ema.store_ema and getattr(self.task, "uses_ema", False):
             extra_kwargs["ema_model"] = self.ema.get_model()
+        
+        # If training with RL
+        # pass the reward type and reward_model(if exist) as a keyword
+        # argument to the task.
+        rl_reward_function = self.cfg['model'].rl_reward_function
+        extra_kwargs["rl_reward_function"] = rl_reward_function
+        if rl_reward_function: 
+            extra_kwargs["sampling_task"] = self.cfg['model'].sampling_task
+        
+        if rl_reward_function == "comet_model":
+            extra_kwargs["reward_model"] = self.comet_reward_model
+            extra_kwargs["comet_model_path"] = self.cfg['model'].rl_reward_function
+            extra_kwargs["comet_need_reference"] = self.cfg['model'].comet_need_reference
+        else:
+            extra_kwargs["reward_model"] = None
 
         # forward and backward pass
         logging_outputs, sample_size, ooms = [], 0, 0
@@ -1555,6 +1574,20 @@ class Trainer(object):
             from fairseq.utils import xla_device_to_cpu
 
             return xla_device_to_cpu(data)
+    
+    def load_comet_reward_model(self):
+        import os
+        from comet import load_from_checkpoint
+        
+        # Amazing code for disabling logging output of `pytorch_lightning` while training. 
+        # For more details, please turn to https://github.com/Lightning-AI/lightning/issues/3431#issuecomment-915949734 
+        import logging
+        logging.getLogger("pytorch_lightning").setLevel(logging.WARNING)
+
+        assert (os.path.exists(self.cfg['model'].comet_model_path)), "Invalid path of Comet reward model!"
+        reward_model = load_from_checkpoint(self.cfg['model'].comet_model_path)
+        reward_model.eval()
+        return reward_model
 
 
 def _catalog_shared_params(module, memo=None, prefix=""):

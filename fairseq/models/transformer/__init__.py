@@ -22,6 +22,7 @@ from .transformer_legacy import (
     transformer_vaswani_wmt_en_fr_big,
     transformer_wmt_en_de_big,
     transformer_wmt_en_de_big_t2t,
+    transformer_t2t_wmt_en_de,
 )
 from .transformer_base import TransformerModelBase, Embedding
 
@@ -42,6 +43,7 @@ __all__ = [
     "transformer_wmt_en_de",
     "transformer_vaswani_wmt_en_de_big",
     "transformer_vaswani_wmt_en_fr_big",
+    "transformer_t2t_wmt_en_de",
     "transformer_wmt_en_de_big",
     "transformer_wmt_en_de_big_t2t",
     "DEFAULT_MAX_SOURCE_POSITIONS",

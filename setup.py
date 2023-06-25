@@ -206,10 +206,12 @@ def do_setup(package_data):
             'numpy; python_version>="3.7"',
             "regex",
             "sacrebleu>=1.4.12",
-            "torch",
+            "torch==1.10.2",
             "tqdm",
             "bitarray",
-            "torchaudio>=0.8.0",
+            "torchaudio==0.10.2",
+            "unbabel-comet==2.0.1",
+            "setuptools==59.5.0"
         ],
         dependency_links=dependency_links,
         packages=find_packages(

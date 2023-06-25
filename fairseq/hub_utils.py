@@ -130,7 +130,10 @@ class GeneratorHubInterface(nn.Module):
             return self.sample([sentences], beam=beam, verbose=verbose, **kwargs)[0]
         tokenized_sentences = [self.encode(sentence) for sentence in sentences]
         batched_hypos = self.generate(tokenized_sentences, beam, verbose, **kwargs)
-        return [self.decode(hypos[0]["tokens"]) for hypos in batched_hypos]
+        if 'sampling' in kwargs.keys() and kwargs['sampling']:
+            return [[self.decode(hypos[index]["tokens"]) for index in range(kwargs['nbest'])] for hypos in batched_hypos]
+        else:
+            return [self.decode(hypos[0]["tokens"]) for hypos in batched_hypos]
 
     def score(
         self, sentences: List[str], replace_newline_with_eos: bool = False, **kwargs

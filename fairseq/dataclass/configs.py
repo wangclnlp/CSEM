@@ -1002,6 +1002,11 @@ class GenerationConfig(FairseqDataclass):
         metadata={"help": "EOS token"},
     )
 
+    # TODO
+    rl_method: Optional[str] = field(
+        default="mrt"
+    )
+
 
 @dataclass
 class CommonEvalConfig(FairseqDataclass):
@@ -1100,6 +1105,28 @@ class EMAConfig(FairseqDataclass):
         metadata={"help": "If true, store EMA model in fp32 even if model is in fp16"},
     )
 
+@dataclass
+class RLConfig(FairseqDataclass):
+    rl_reward_function: str = field(
+        default=None,
+        metadata={
+            "help": "Default is None which means not use rl, available options: `comet_model` which also needs path options `--comet-model-path`, \
+                    `--comet-need-reference` (if the model needs reference), and `--comet-task` (which means the task for comet model) ; \
+                    `bleu` which means using bleu as the reward"
+        }
+    ) # TODO: add ROUGE support
+    comet_model_path: str = field(
+        default=None,
+        metadata={"help": "Checkpoint path of the comet model"}
+    )
+    comet_need_reference: bool = field(
+        default=True,
+        metadata={"help": "If the model needs reference"}
+    )
+    sampling_task: str = field(
+        default="translation",
+        metadata={"help": "Current available task: `translation`, `summarization`, `style_transfer`"}
+    )
 
 @dataclass
 class FairseqConfig(FairseqDataclass):

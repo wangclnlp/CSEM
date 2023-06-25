@@ -16,7 +16,6 @@ from fairseq.data import data_utils
 from fairseq.models import FairseqIncrementalDecoder
 from fairseq.ngram_repeat_block import NGramRepeatBlock
 
-
 class SequenceGenerator(nn.Module):
     def __init__(
         self,
@@ -81,7 +80,7 @@ class SequenceGenerator(nn.Module):
         self.beam_size = beam_size
         # the max beam size is the dictionary size - 1, since we never select pad
         self.beam_size = min(beam_size, self.vocab_size - 1)
-        self.model.set_decoder_beam_size(self.beam_size)
+        # self.model.set_decoder_beam_size(self.beam_size)
         self.max_len_a = max_len_a
         self.max_len_b = max_len_b
         self.min_len = min_len
@@ -92,6 +91,8 @@ class SequenceGenerator(nn.Module):
         self.unk_penalty = unk_penalty
         self.temperature = temperature
         self.match_source_len = match_source_len
+
+        self.model.eval()
 
         if no_repeat_ngram_size > 0:
             self.repeat_ngram_blocker = NGramRepeatBlock(no_repeat_ngram_size)
@@ -110,7 +111,7 @@ class SequenceGenerator(nn.Module):
             hasattr(self.search, "needs_src_lengths") and self.search.needs_src_lengths
         )
 
-        self.model.eval()
+        # self.model.eval()
 
         self.lm_model = lm_model
         self.lm_weight = lm_weight
@@ -174,7 +175,7 @@ class SequenceGenerator(nn.Module):
 
     @torch.no_grad()
     def generate(
-        self, models, sample: Dict[str, Dict[str, Tensor]], **kwargs
+        self, models=None, sample: Dict[str, Dict[str, Tensor]] = None, noise:  Optional[bool] = False, **kwargs
     ) -> List[List[Dict[str, Tensor]]]:
         """Generate translations. Match the api of other fairseq generators.
 
@@ -188,7 +189,7 @@ class SequenceGenerator(nn.Module):
             bos_token (int, optional): beginning of sentence token
                 (default: self.eos)
         """
-        return self._generate(sample, **kwargs)
+        return self._generate(sample, noise=noise, **kwargs)
 
     def _generate(
         self,
@@ -196,6 +197,7 @@ class SequenceGenerator(nn.Module):
         prefix_tokens: Optional[Tensor] = None,
         constraints: Optional[Tensor] = None,
         bos_token: Optional[int] = None,
+        noise: Optional[bool] = False,
     ):
         incremental_states = torch.jit.annotate(
             List[Dict[str, Dict[str, Optional[Tensor]]]],
@@ -355,13 +357,21 @@ class SequenceGenerator(nn.Module):
 
             lprobs[lprobs != lprobs] = torch.tensor(-math.inf).to(lprobs)
 
+            if noise:
+                epsilon = 1e-6 
+                lprobs.data.add_(-torch.log(-torch.log(torch.Tensor(
+                lprobs.size()).to(lprobs).uniform_(0, 1) + epsilon) + epsilon)) / 0.5
+
             lprobs[:, self.pad] = -math.inf  # never select pad
             lprobs[:, self.unk] -= self.unk_penalty  # apply unk penalty
+
+
 
             # handle max length constraint
             if step >= max_len:
                 lprobs[:, : self.eos] = -math.inf
                 lprobs[:, self.eos + 1 :] = -math.inf
+                lprobs[:, self.eos] = 1
 
             # handle prefix tokens (possibly with different lengths)
             if (
@@ -749,7 +759,7 @@ class EnsembleModel(nn.Module):
             hasattr(m, "decoder") and isinstance(m.decoder, FairseqIncrementalDecoder)
             for m in models
         ):
-            self.has_incremental = True
+            self.has_incremental = True 
 
     def forward(self):
         pass
