@@ -211,7 +211,7 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
                 preset_prev_output_tokens, _ = self.padding_tensor(preset_prev_output_tokens, self.padding_idx)
 
                 # record human references
-                if if_add_reference:
+                if if_add_reference or rl_reward_function == "bleu":
                     human_references = sample['target'].clone()
                     human_references = human_references.repeat(sample_num, 1)
 
@@ -242,7 +242,7 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
                                                 escape_unk=True, 
                                                 extra_symbols_to_ignore=ignore_tokens).split('\n')
                     if if_add_reference:
-                        ref_str = self.src_dict.string(human_references, 
+                        ref_str = self.tgt_dict.string(human_references, 
                                                 bpe_symbol="subword_nmt", 
                                                 escape_unk=True, 
                                                 extra_symbols_to_ignore=ignore_tokens).split('\n')
@@ -285,7 +285,7 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
                                                 bpe_symbol="subword_nmt", 
                                                 escape_unk=True, 
                                                 extra_symbols_to_ignore=ignore_tokens).split('\n')
-                    ref_str = self.src_dict.string(human_references, 
+                    ref_str = self.tgt_dict.string(human_references, 
                                             bpe_symbol="subword_nmt", 
                                             escape_unk=True, 
                                             extra_symbols_to_ignore=ignore_tokens).split('\n')
